@@ -20,32 +20,52 @@ public class TurnManager : MonoBehaviour
     public GameObject meleePrefab;
     public GameObject midPrefab;
     public GameObject longPrefab;
+    int boardWidth = 6;
+    int boardHeight = 6;
+    Vector2Int centerOffset;
 
     private void Awake()
     {
         plans = new Dictionary<Unit, ActionPlan>();
         board = new Board();
+        centerOffset = new Vector2Int(boardWidth / 2, boardHeight / 2);
     }
 
     public void Start()
     {
-        UnitView[] views = FindObjectsByType<UnitView>(FindObjectsSortMode.None);
+        CreateUnit(UnitType.Melee, new Vector2Int(2, 0), false, meleePrefab);
+        CreateUnit(UnitType.MidRange, new Vector2Int(3, 0), false, midPrefab);
+        CreateUnit(UnitType.LongRange, new Vector2Int(4, 0), false, longPrefab);
 
-        foreach (var v in views)
-        {
-            Vector2Int pos = new Vector2Int(
-                Mathf.RoundToInt(v.transform.position.x),
-                Mathf.RoundToInt(v.transform.position.z)
-            );
-
-            Unit unit = new Unit(v.type, pos);
-            unit.isEnemy = v.isEnemy;
-            unit.view = v.gameObject;
-
-            units.Add(unit);
-            board.PlaceUnit(unit);
-        }
+        CreateUnit(UnitType.Melee, new Vector2Int(2, 5), true, meleePrefab);
+        CreateUnit(UnitType.MidRange, new Vector2Int(3, 5), true, midPrefab);
+        CreateUnit(UnitType.LongRange, new Vector2Int(4, 5), true, longPrefab);
     }
+
+    void CreateUnit(UnitType type, Vector2Int boardPos, bool isEnemy, GameObject prefab)
+    {
+        Unit unit = new Unit(type, boardPos);
+        unit.isEnemy = isEnemy;
+
+        GameObject obj = Instantiate(prefab);
+
+        // シーン上の位置だけ中央オフセットで補正
+        Vector3 scenePos = new Vector3(
+            boardPos.x - centerOffset.x,
+            boardPos.y - centerOffset.y,
+            0
+        );
+        obj.transform.position = scenePos;
+
+        UnitView view = obj.GetComponent<UnitView>();
+        unit.hp = view.hp;
+        unit.damage = view.damage;
+        unit.view = obj;
+
+        units.Add(unit);
+        board.PlaceUnit(unit);
+    }
+
 
     private void Update()
     {
@@ -132,13 +152,22 @@ public class TurnManager : MonoBehaviour
 
     void CleanupPhase()
     {
-        foreach(Unit unit in units)
+        foreach (Unit unit in units)
         {
             if (!unit.isAlive)
             {
+                // ボードから削除
                 board.grid[unit.position.x, unit.position.y] = null;
+
+                // GameObject が残っていれば消す
+                if (unit.view != null)
+                {
+                    Destroy(unit.view);
+                    unit.view = null;
+                }
+
                 Debug.Log(unit.type + " died");
-            }  
+            }
         }
     }
 
@@ -243,13 +272,6 @@ public class TurnManager : MonoBehaviour
 
     void Damage(Unit attacker, Unit target)
     {
-        int damage = 0;
-        if (attacker.type == UnitType.Melee)
-            damage = 3;
-        if(attacker.type == UnitType.MidRange)
-            damage = 2;
-        if(attacker.type == UnitType.LongRange)
-            damage = 4;
-        target.hp -= damage;
+        target.hp -= attacker.damage;
     }
 }

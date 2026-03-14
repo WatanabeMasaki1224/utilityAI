@@ -148,9 +148,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 154d4ace7d5aa8d4da297f43264e0341, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TurnManager
-  meleeDamage: 3
-  midRangeDamage: 2
-  LongRangeDamage: 4
+  meleePrefab: {fileID: 6127715691026796219, guid: 4ece283c5d8601a4e943447fa59ae37b, type: 3}
+  midPrefab: {fileID: 2317513119799330974, guid: 5405404cdadc0634fbe57a76a195fb4b, type: 3}
+  longPrefab: {fileID: 7593604262659922040, guid: b59e715d771c9404fad42a34ffed5cdd, type: 3}
 --- !u!4 &93196630
 Transform:
   m_ObjectHideFlags: 0
