@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class ActionPlan : MonoBehaviour
+public class ActionPlan 
 {
     public Vector2Int targetPosition;
     public bool willAttack;

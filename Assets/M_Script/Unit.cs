@@ -17,7 +17,10 @@ public class Unit
     public int hp = 6;
     public int maxCost = 5;
     public int currentCost;
+    public bool isEnemy;
+    public int damage;
     public bool isAlive => hp > 0;
+    public GameObject view;
 
     public Unit(UnitType type, Vector2Int startPos)
     {
