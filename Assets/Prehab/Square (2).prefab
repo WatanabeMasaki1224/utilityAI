@@ -107,4 +107,4 @@ MonoBehaviour:
   type: 2
   isEnemy: 0
   hp: 6
-  damage: 4
+  damage: 2

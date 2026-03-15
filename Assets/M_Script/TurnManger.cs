@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -84,7 +85,6 @@ public class TurnManager : MonoBehaviour
             else if (phase == GamePhase.Attack)
             {
                 AttackPhase();
-                CleanupPhase();
                 phase = GamePhase.Planning;
             }
         }
@@ -105,9 +105,7 @@ public class TurnManager : MonoBehaviour
 
     public void ExecuteTurn()
     {
-        MovePhase();
-        AttackPhase();
-        CleanupPhase();
+        
     }
 
     void EndTurn()
@@ -135,19 +133,12 @@ public class TurnManager : MonoBehaviour
 
     void AttackPhase()
     {
-        foreach(Unit unit in units)
-        {
-            Debug.Log(unit.type + " ‚ÌUŒ‚ƒtƒF[ƒY");
-            if (!unit.isAlive)
-                continue;
-
-            ActionPlan plan = plans[unit];
-
-            if (!plan.willAttack)
-                continue;
-
-            Attack(unit);
-        }
+        Attack(UnitType.Melee, 1);
+        CleanupPhase();
+        Attack(UnitType.MidRange, 2);
+        CleanupPhase();
+        Attack(UnitType.LongRange, -1);
+        CleanupPhase();
     }
 
     void CleanupPhase()
@@ -170,7 +161,6 @@ public class TurnManager : MonoBehaviour
             }
         }
     }
-
     /// <summary>
     /// 
     /// </summary>
@@ -225,37 +215,42 @@ public class TurnManager : MonoBehaviour
         return plan;
     }
 
-    void Attack(Unit attacker)
+    void Attack(UnitType type,int range)
     {
-        List<Unit> targets = new List<Unit>();
-
-        //UŒ‚‰Â”\‚È“G‚ğ’T‚·
-        foreach (Unit enemy in units)
+        //UŒ‚ƒyƒA‚ÌƒŠƒXƒg
+        List<(Unit attacker, Unit target)> attacks = new List<(Unit,Unit)>();
+        //UŒ‚‘ÎÛ‚ğ’T‚·
+        foreach (Unit attackerUnit in units)
         {
-            if (enemy == attacker || !enemy.isAlive)
+            if(!attackerUnit.isAlive || attackerUnit.type != type) 
                 continue;
 
-            if (enemy.isEnemy == attacker.isEnemy)
+            List<Unit> possibleTargets =  new List<Unit>();
+            foreach(Unit enemy in units)
+            {
+                if(enemy == attackerUnit || !enemy.isAlive || enemy.isEnemy == attackerUnit.isEnemy)
+                    continue;
+
+                float dist =Vector2Int.Distance(attackerUnit.position,enemy.position);
+                if(attackerUnit.type == UnitType.Melee && dist <= 1)
+                    possibleTargets.Add(enemy);
+                if(attackerUnit.type == UnitType.MidRange && dist <= 2 )
+                    possibleTargets.Add(enemy);
+                if(enemy.type == UnitType.LongRange && attackerUnit.position.x == enemy.position.x)
+                    possibleTargets.Add(enemy);
+            }
+            if (possibleTargets.Count == 0)
                 continue;
 
-            float dist = Vector2Int.Distance(attacker.position, enemy.position);
-
-            if (attacker.type == UnitType.Melee && dist <= 1)
-                targets.Add(enemy);
-
-            if (attacker.type == UnitType.MidRange && dist <= 2)
-                targets.Add(enemy);
-
-            if (attacker.type == UnitType.LongRange && attacker.position.x == enemy.position.x)
-                targets.Add(enemy);
+            Unit taege = SelectTarget(possibleTargets);
+            attacks.Add((attackerUnit, taege));
         }
-        //UŒ‚‘ÎÛ‚ª‚¢‚È‚¢
-        if (targets.Count == 0)
-            return;
-        //ƒ^[ƒQƒbƒg‘I‘ğ
-        Unit target = SelectTarget(targets);
-        Damage(attacker, target);
-        Debug.Log(attacker.type + " attacked " + target.type + " HP:" + target.hp);
+
+        foreach (var attack in attacks)
+        {
+            Damage(attack.attacker, attack.target);
+            Debug.Log(attack.attacker.type + " attacked " + attack.target.type + " HP:" + attack.target.hp);
+        }
 
     }
 
