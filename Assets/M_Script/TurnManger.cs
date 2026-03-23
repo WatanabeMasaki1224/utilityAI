@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using Unity.VisualScripting;
 using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -24,6 +25,9 @@ public class TurnManager : MonoBehaviour
     int boardWidth = 6;
     int boardHeight = 6;
     Vector2Int centerOffset;
+    // プレイヤーが操作中のユニット
+    Unit selectedUnit = null;
+    Vector2Int? selectedUnitTarget = null;
 
     private void Awake()
     {
@@ -70,24 +74,97 @@ public class TurnManager : MonoBehaviour
 
     private void Update()
     {
-        if (Keyboard.current.spaceKey.wasPressedThisFrame)
+        if (phase == GamePhase.Planning)
         {
-            if (phase == GamePhase.Planning)
+            HandlePlayerPlanning();
+            Debug.Log("プランターン");
+        }
+        else if (phase == GamePhase.Move)
+        {
+            ExecuteMovePhase();
+            phase = GamePhase.Attack;
+            Debug.Log("移動ターン");
+        }
+        else if (phase == GamePhase.Attack)
+        {
+            //ExecuteAttackPhase();
+            CleanupPhase();
+            phase = GamePhase.Planning;
+            Debug.Log("攻撃ターン");
+        }
+    }
+
+    void HandlePlayerPlanning()
+    {
+        // プレイヤーがユニットを選択して移動先をクリック
+        if (Mouse.current.leftButton.wasPressedThisFrame)
+        {
+            Vector2 mousePos = Mouse.current.position.ReadValue();
+            Vector3 worldPos = Camera.main.ScreenToWorldPoint(mousePos);
+            Vector2Int boardPos = WorldToBoardPos(worldPos);
+
+            // 選択済みユニットがあれば移動
+            if (selectedUnit != null)
             {
-                StartTurn();
-                phase = GamePhase.Move;
+                if (board.IsInside(boardPos) && board.IsEmpty(boardPos))
+                {
+                    board.MoveUnit(selectedUnit, boardPos);
+                    Debug.Log(selectedUnit.type + " will move to " + boardPos);
+                    selectedUnit = null; // 移動完了
+                }
             }
-            else if (phase == GamePhase.Move)
+            else
             {
-                MovePhase();
-                phase = GamePhase.Attack;
-            }
-            else if (phase == GamePhase.Attack)
-            {
-                AttackPhase();
-                phase = GamePhase.Planning;
+                // クリックした位置にプレイヤーユニットがいれば選択
+                Unit unit = board.GetUnitAt(boardPos);
+                if (unit != null && !unit.isEnemy)
+                {
+                    selectedUnit = unit;
+                    Debug.Log(unit.type + " selected");
+                }
             }
         }
+
+        // プレイヤーが操作完了したらスペースで Move フェイズへ
+        if (Keyboard.current.spaceKey.wasPressedThisFrame)
+        {
+            phase = GamePhase.Move;
+        }
+    }
+
+    void ExecuteMovePhase()
+    {
+        foreach (var unit in units)
+        {
+            if (!unit.isAlive)
+                continue;
+
+            // プレイヤー操作済みならスキップ
+            if (!unit.isEnemy && unit == selectedUnit)
+                continue;
+
+            // AIユニットは plans に従って移動
+            if (plans.TryGetValue(unit, out ActionPlan plan))
+            {
+                Vector2Int target = plan.targetPosition;
+
+                if (board.IsInside(target) && board.IsEmpty(target))
+                {
+                    board.MoveUnit(unit, target);
+                    Debug.Log(unit.type + " moved to " + target);
+                }
+            }
+        }
+
+        // Move フェイズ終了後は選択解除
+        selectedUnit = null;
+    }
+
+    Vector2Int WorldToBoardPos(Vector3 worldPos)
+    {
+        int x = Mathf.RoundToInt(worldPos.x + centerOffset.x);
+        int y = Mathf.RoundToInt(worldPos.y + centerOffset.y);
+        return new Vector2Int(x, y);
     }
 
     void StartTurn()

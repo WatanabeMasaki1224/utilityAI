@@ -41,4 +41,11 @@ public class Board
             );
         }
     }
+
+    public Unit GetUnitAt(Vector2Int pos)
+    {
+        if (!IsInside(pos))
+            return null;
+        return grid[pos.x, pos.y];
+    }
 }
